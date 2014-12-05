@@ -140,6 +140,9 @@ struct PageInfo {
 //struct PageInfo instrPage;
 //struct PageInfo instrs[1024];
 
+
+volatile unsigned *gpio = NULL;
+
 // Get the physical address of a page of virtual memory
 void getRealMemPage(void** vAddr, void** pAddr) {
     void* a = (void*)valloc(4096);
@@ -274,6 +277,12 @@ void unSetupDMA(){
 }
 
 void handSig(const int h) {
+
+  // clear lpf control pins
+  for(int g=7; g<=11; g++) {
+    GPIO_CLR = 1<<g;
+  }
+
   exit(0);
 }
 
@@ -485,7 +494,10 @@ void setup_gpios(
     // Set GPIO pins 7-11 to output
     for (g=7; g<=11; g++) {
         INP_GPIO(g); // must use INP_GPIO before we can use OUT_GPIO
-        //OUT_GPIO(g);
+        OUT_GPIO(g);
+
+	// set all lpf pins low
+	GPIO_CLR = 1<<g;
     }
 
 }
@@ -996,9 +1008,12 @@ int main(const int argc, char * const argv[]) {
   // Initial configuration
   int mem_fd;
   char *gpio_mem, *gpio_map;
-  volatile unsigned *gpio = NULL;
+  //volatile unsigned *gpio = NULL;
   setup_io(mem_fd,gpio_mem,gpio_map,gpio);
   setup_gpios(gpio);
+
+  GPIO_SET  = 1<<7;
+
   allof7e = (unsigned *)mmap(
               NULL,
               0x01000000,  //len
