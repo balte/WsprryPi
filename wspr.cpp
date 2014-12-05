@@ -650,6 +650,8 @@ void print_usage() {
   cout << "  -n --no-delay" << endl;
   cout << "    Transmit immediately, do not wait for a WSPR TX window. Used" << endl;
   cout << "    for testing only." << endl;
+  cout << "  -l --lpf" << endl;
+  cout << "    LPF switching. 0 for off, 1 - 5 for band." << endl;
   cout << endl;
   cout << "Frequencies can be specified either as an absolute TX carrier frequency, or" << endl;
   cout << "using one of the following strings. If a string is used, the transmission" << endl;
@@ -691,7 +693,8 @@ void parse_commandline(
   double & test_tone,
   bool & no_delay,
   mode_type & mode,
-  int & terminate
+  int & terminate,
+  string & lpf
 ) {
   // Default values
   ppm=0;
@@ -712,13 +715,14 @@ void parse_commandline(
     {"offset",           no_argument,       0, 'o'},
     {"test-tone",        required_argument, 0, 't'},
     {"no-delay",         no_argument,       0, 'n'},
+    {"lpf",              required_argument, 0, 'l'},
     {0, 0, 0, 0}
   };
 
   while (1) {
     /* getopt_long stores the option index here. */
     int option_index = 0;
-    int c = getopt_long (argc, argv, "hp:srx:ot:",
+    int c = getopt_long (argc, argv, "hp:srx:ot:l:",
                      long_options, &option_index);
     if (c == -1)
       break;
@@ -772,6 +776,10 @@ void parse_commandline(
         break;
       case 'n':
         no_delay=true;
+        break;
+      case 'l':
+        lpf = optarg;
+        //cout << "lpf " << lpf << endl;
         break;
       case '?':
         /* getopt_long already printed an error message. */
@@ -876,6 +884,12 @@ void parse_commandline(
     }
   }
 
+  if(lpf.length() > 0 && (lpf.length() != center_freq_set.size())) {
+    cerr << "Error: lpf relay info must match requested frequencies." << endl;
+    ABORT(-1);
+  }
+
+
   // Print a summary of the parsed options
   if (mode==WSPR) {
     cout << "WSPR packet contents:" << endl;
@@ -886,7 +900,10 @@ void parse_commandline(
     stringstream temp;
     for (unsigned int t=0;t<center_freq_set.size();t++) {
       temp << setprecision(6) << fixed;
-      temp << "  " << center_freq_set[t]/1e6 << " MHz" << endl;
+      temp << "  " << center_freq_set[t]/1e6 << " MHz";
+
+     //if(lpf)
+//	 << endl;
     }
     cout << temp.str();
     temp.str("");
@@ -987,6 +1004,8 @@ int main(const int argc, char * const argv[]) {
   bool no_delay;
   mode_type mode;
   int terminate;
+  string lpf;
+
   parse_commandline(
     argc,
     argv,
@@ -1001,7 +1020,8 @@ int main(const int argc, char * const argv[]) {
     test_tone,
     no_delay,
     mode,
-    terminate
+    terminate,
+    lpf
   );
   int nbands=center_freq_set.size();
 
