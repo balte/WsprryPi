@@ -1036,8 +1036,6 @@ int main(const int argc, char * const argv[]) {
   setup_io(mem_fd,gpio_mem,gpio_map,gpio);
   setup_gpios(gpio);
 
-  GPIO_SET  = 1<<7;
-
   allof7e = (unsigned *)mmap(
               NULL,
               0x01000000,  //len
@@ -1057,15 +1055,21 @@ int main(const int argc, char * const argv[]) {
   setupDMA(constPage,instrPage,instrs);
   txoff();
 
+  int lpfId = 0;
+
   if (mode==TONE) {
     // Test tone mode...
     double wspr_symtime = WSPR_SYMTIME;
     double tone_spacing=1.0/wspr_symtime;
 
+    if(lpf != "") {
+      lpfId = lpf.at(0) - '0';
+    }
+
     stringstream temp;
     temp << setprecision(6) << fixed << "Transmitting test tone on frequency " << test_tone/1.0e6 << " MHz";
-    if(lpf != "") {
-      temp << " on LPF " << lpf.at(0) << endl;
+    if(lpfId > 0) {
+      temp << " on LPF " << lpfId << endl;
     }
     cout << temp.str();
     cout << "Press CTRL-C to exit!" << endl;
@@ -1095,9 +1099,11 @@ int main(const int argc, char * const argv[]) {
         ppm_prev=ppm;
       }
 
-      if(lpf != "") {
-        cout << "Setting LPF " << lpf.at(0) << endl;
-        GPIO_SET = 1 << lpf.at(0);
+      
+
+      if(lpfId > 0) {
+        cout << "  Setting LPF " << lpfId << endl;
+        GPIO_SET = 1 << (6 + lpfId);
       }
 
       txSym(0, center_freq_actual, tone_spacing, 60, dma_table_freq, F_PWM_CLK_INIT, instrs, constPage, bufPtr);
@@ -1141,13 +1147,17 @@ int main(const int argc, char * const argv[]) {
         center_freq_desired+=(2.0*rand()/((double)RAND_MAX+1.0)-1.0)*(wspr15?WSPR15_RAND_OFFSET:WSPR_RAND_OFFSET);
       }
 
+      if(lpf != "") {
+        lpfId = lpf.at(band) - '0';
+      }  
+
       // Status message before transmission
       stringstream temp;
       temp << setprecision(6) << fixed;
       temp << "Desired center frequency for " << (wspr15?"WSPR-15":"WSPR") << " transmission: "<< center_freq_desired/1e6 << " MHz";
 
-      if(lpf != "") {
-        temp << " on LPF " << band << endl;
+      if(lpfId > 0) {
+        temp << " on LPF " << lpfId << endl;
       }
       cout << temp.str();
 
@@ -1176,9 +1186,9 @@ int main(const int argc, char * const argv[]) {
       // Send the message!
       //cout << "TX started!" << endl;
 
-      if(lpf != "") {
-        cout << " setting LPF " << band << endl;
-        GPIO_SET = 1 << lpf.at(band);
+      if(lpfId > 0) {
+        cout << "  Setting LPF " << lpfId << endl;
+        GPIO_SET = 1 << (6 + lpfId);
       }
 
       if (center_freq_actual){
@@ -1218,9 +1228,9 @@ int main(const int argc, char * const argv[]) {
         printf(" (%ld.%03ld s)\n", tvDiff.tv_sec, (tvDiff.tv_usec+500)/1000);
 
 
-        if(lpf != "") {
-          cout << " clearing LPF " << band << endl;
-          GPIO_CLR = 1 << lpf.at(band);
+        if(lpfId > 0) {
+          cout << "  Clearing LPF " << lpfId << endl;
+          GPIO_CLR = 1 << (6 + lpfId);
         }
 
       } else {
