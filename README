@@ -49,6 +49,9 @@ Usage: (WSPR --help output):
     -n --no-delay
       Transmit immediately, do not wait for a WSPR TX window. Used
       for testing only.
+    -l --lpf
+      Brings up GPIO 7 - 11 mapped as band 1 - 5 before TX.  Used
+      to switch LPF relays like the QRP Labs board.
 
   Frequencies can be specified either as an absolute TX carrier frequency, or
   using one of the following strings. If a string is used, the transmission

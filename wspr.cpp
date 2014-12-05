@@ -651,7 +651,7 @@ void print_usage() {
   cout << "    Transmit immediately, do not wait for a WSPR TX window. Used" << endl;
   cout << "    for testing only." << endl;
   cout << "  -l --lpf" << endl;
-  cout << "    LPF switching. 0 for off, 1 - 5 for band." << endl;
+  cout << "    LPF switching. 0 for off, 1 - 5 for band relay. eg -l124 for relay 1, 2 and 4" << endl;
   cout << endl;
   cout << "Frequencies can be specified either as an absolute TX carrier frequency, or" << endl;
   cout << "using one of the following strings. If a string is used, the transmission" << endl;
@@ -876,17 +876,20 @@ void parse_commandline(
       cerr << "Error: test tone frequency must be positive" << endl;
       ABORT(-1);
     }
+    if(lpf != "" && (lpf.length() != 1)) {
+      cerr << "Error: you must specify 1 relay in test mode." << endl;
+      ABORT(-1);
+    }
   } else {
     if ((callsign=="")||(locator=="")||(tx_power=="")||(center_freq_set.size()==0)) {
       cerr << "Error: must specify callsign, locator, dBm, and at least one frequency" << endl;
       cerr << "Try: wspr --help" << endl;
       ABORT(-1);
     }
-  }
-
-  if(lpf.length() > 0 && (lpf.length() != center_freq_set.size())) {
-    cerr << "Error: lpf relay info must match requested frequencies." << endl;
-    ABORT(-1);
+    if(lpf != "" && (lpf.length() != center_freq_set.size())) {
+      cerr << "Error: lpf info must match requested frequencies." << endl;
+      ABORT(-1);
+    }
   }
 
 
@@ -902,8 +905,9 @@ void parse_commandline(
       temp << setprecision(6) << fixed;
       temp << "  " << center_freq_set[t]/1e6 << " MHz";
 
-     //if(lpf)
-//	 << endl;
+      if(lpf != "") {
+        temp << " on LPF " << lpf.at(t) << endl;
+      }
     }
     cout << temp.str();
     temp.str("");
@@ -1059,7 +1063,10 @@ int main(const int argc, char * const argv[]) {
     double tone_spacing=1.0/wspr_symtime;
 
     stringstream temp;
-    temp << setprecision(6) << fixed << "Transmitting test tone on frequency " << test_tone/1.0e6 << " MHz" << endl;
+    temp << setprecision(6) << fixed << "Transmitting test tone on frequency " << test_tone/1.0e6 << " MHz";
+    if(lpf != "") {
+      temp << " on LPF " << lpf.at(0) << endl;
+    }
     cout << temp.str();
     cout << "Press CTRL-C to exit!" << endl;
 
@@ -1087,6 +1094,12 @@ int main(const int argc, char * const argv[]) {
         }
         ppm_prev=ppm;
       }
+
+      if(lpf != "") {
+        cout << "Setting LPF " << lpf.at(0) << endl;
+        GPIO_SET = 1 << lpf.at(0);
+      }
+
       txSym(0, center_freq_actual, tone_spacing, 60, dma_table_freq, F_PWM_CLK_INIT, instrs, constPage, bufPtr);
     }
 
@@ -1131,7 +1144,11 @@ int main(const int argc, char * const argv[]) {
       // Status message before transmission
       stringstream temp;
       temp << setprecision(6) << fixed;
-      temp << "Desired center frequency for " << (wspr15?"WSPR-15":"WSPR") << " transmission: "<< center_freq_desired/1e6 << " MHz" << endl;
+      temp << "Desired center frequency for " << (wspr15?"WSPR-15":"WSPR") << " transmission: "<< center_freq_desired/1e6 << " MHz";
+
+      if(lpf != "") {
+        temp << " on LPF " << band << endl;
+      }
       cout << temp.str();
 
       // Wait for WSPR transmission window to arrive.
@@ -1158,6 +1175,12 @@ int main(const int argc, char * const argv[]) {
 
       // Send the message!
       //cout << "TX started!" << endl;
+
+      if(lpf != "") {
+        cout << " setting LPF " << band << endl;
+        GPIO_SET = 1 << lpf.at(band);
+      }
+
       if (center_freq_actual){
         // Print a status message right before transmission begins.
         struct timeval tvBegin, tvEnd, tvDiff;
@@ -1193,6 +1216,12 @@ int main(const int argc, char * const argv[]) {
         timeval_print(&tvEnd);
         timeval_subtract(&tvDiff, &tvEnd, &tvBegin);
         printf(" (%ld.%03ld s)\n", tvDiff.tv_sec, (tvDiff.tv_usec+500)/1000);
+
+
+        if(lpf != "") {
+          cout << " clearing LPF " << band << endl;
+          GPIO_CLR = 1 << lpf.at(band);
+        }
 
       } else {
         cout << "  Skipping transmission" << endl;
